@@ -1,12 +1,13 @@
 import gym
 from gym.spaces import Discrete, Box
 import random
+from Scorecard import Scorecard
 
 class WuerfelpokerEnv(gym.Env):
     def __init__(self):
-        self.MAX_REROLLS = 3
+        self.max_rounds = 3
         self.current_round = 1
-        self.saved_dices = []
+        self.saved_dices = [None, None, None, None, None]
         # Dice
         # 1 = 9
         # 2 = 10
@@ -19,6 +20,8 @@ class WuerfelpokerEnv(gym.Env):
         self.dice3 = random.randint(1,6)
         self.dice4 = random.randint(1,6)
         self.dice5 = random.randint(1,6)
+        
+        self.scorecard = Scorecard()
         
         # every round starts with results of 5 dices
         # Action Space:
@@ -64,7 +67,6 @@ class WuerfelpokerEnv(gym.Env):
         # insert pokers (4 of a kind) into scorecard = 39
         # insert grandes (5 of a kind) into scorecard = 40
         
-        
         self.action_space = Discrete(40)
         
         # Observation space:
@@ -75,12 +77,89 @@ class WuerfelpokerEnv(gym.Env):
         
     def step(self, action: int):
         observation = None
-        reward = None # currently total points
-        done = False
-        return observation, reward, done, {}
+        penalty = 0
+        
+        # Before fill value into scorecard, getting best dice combination
+        if action <= 30 and self.current_round <= self.max_rounds:
+            if action == 0:
+                if all(self.saved_dices) is None:
+                    self.dice1 = random.randint(1,6)
+                    self.dice2 = random.randint(1,6)
+                    self.dice3 = random.randint(1,6)
+                    self.dice4 = random.randint(1,6)
+                    self.dice5 = random.randint(1,6)
+                else:
+                    # Illegal move, already saved dices
+                    penalty = -1000
+            if action == 1:
+                if self.saved_dices[0] is not None:
+                    # Illegal move, already saved this dice
+                    penalty = -1000
+                else:
+                    self.saved_dices[0] = self.dice1
+                    self.dice2 = random.randint(1,6)
+                    self.dice3 = random.randint(1,6)
+                    self.dice4 = random.randint(1,6)
+                    self.dice5 = random.randint(1,6)
+            if action == 2:
+                if self.saved_dices[1] is not None:
+                    # Illegal move, already saved this dice
+                    penalty = -1000
+                else:
+                    self.saved_dices[1] = self.dice2
+                    self.dice1 = random.randint(1,6)
+                    self.dice3 = random.randint(1,6)
+                    self.dice4 = random.randint(1,6)
+                    self.dice5 = random.randint(1,6)
+            if action == 3:
+                if self.saved_dices[2] is not None:
+                    # Illegal move, already saved this dice
+                    penalty = -1000
+                else:
+                    self.saved_dices[2] = self.dice3
+                    self.dice1 = random.randint(1,6)
+                    self.dice2 = random.randint(1,6)
+                    self.dice4 = random.randint(1,6)
+                    self.dice5 = random.randint(1,6)
+            if action == 4:
+                if self.saved_dices[3] is not None:
+                    # Illegal move, already saved this dice
+                    penalty = -1000
+                else:
+                    self.saved_dices[3] = self.dice4
+                    self.dice1 = random.randint(1,6)
+                    self.dice2 = random.randint(1,6)
+                    self.dice3 = random.randint(1,6)
+                    self.dice5 = random.randint(1,6)
+            if action == 5:
+                if self.saved_dices[4] is not None:
+                    # Illegal move, already saved this dice
+                    penalty = -1000
+                else:
+                    self.saved_dices[4] = self.dice5
+                    self.dice1 = random.randint(1,6)
+                    self.dice2 = random.randint(1,6)
+                    self.dice3 = random.randint(1,6)
+                    self.dice4 = random.randint(1,6)
+            self.current_round += 1
+        if action <= 30 and self.current_round > self.max_rounds:
+            # more than max rounds
+            penalty = -1000
+        
+        # Fill value into scorecard
+        if action >= 31 and action <= 40:
+            pass
+        
+        done = self.scorecard.is_full()
+        if penalty != 0:
+            done = True # terminate game, if illegal move happend
+        reward = self.scorecard.sum() # currently total points
+        
+        return observation, reward - penalty, done, {}
     
     def reset(self):
         observation = None
+        self.scorecard = Scorecard()
         return observation
     
     def close(self):
